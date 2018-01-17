@@ -41,6 +41,7 @@ conns = {}
 
 def init_server(host, port):
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     print('[+] 初始化套接字成功')
     try:
         s.bind((host, port))
