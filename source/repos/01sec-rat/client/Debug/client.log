@@ -1,0 +1,13 @@
+﻿  client.cpp
+c:\users\admin\source\repos\client\client\client.cpp(35): warning C4996: 'sprintf': This function or variable may be unsafe. Consider using sprintf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+  c:\program files (x86)\windows kits\10\include\10.0.16299.0\ucrt\stdio.h(1772): note: 参见“sprintf”的声明
+c:\users\admin\source\repos\client\client\client.cpp(48): warning C4996: 'strcat': This function or variable may be unsafe. Consider using strcat_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+  c:\program files (x86)\windows kits\10\include\10.0.16299.0\ucrt\string.h(93): note: 参见“strcat”的声明
+c:\users\admin\source\repos\client\client\client.cpp(185): warning C4554: “&”: 检查运算符优先级可能存在的错误；使用圆括号阐明优先级
+c:\users\admin\source\repos\client\client\client.cpp(85): warning C4996: 'sprintf': This function or variable may be unsafe. Consider using sprintf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+  c:\program files (x86)\windows kits\10\include\10.0.16299.0\ucrt\stdio.h(1772): note: 参见“sprintf”的声明
+c:\users\admin\source\repos\client\client\client.cpp(90): warning C4996: 'inet_addr': Use inet_pton() or InetPton() instead or define _WINSOCK_DEPRECATED_NO_WARNINGS to disable deprecated API warnings
+  c:\program files (x86)\windows kits\10\include\10.0.16299.0\um\winsock2.h(1830): note: 参见“inet_addr”的声明
+c:\users\admin\source\repos\client\client\client.cpp(62): warning C4101: “addr”: 未引用的局部变量
+c:\users\admin\source\repos\client\client\client.cpp(61): warning C4101: “host”: 未引用的局部变量
+  client.vcxproj -> C:\Users\admin\source\repos\client\Debug\client.exe
