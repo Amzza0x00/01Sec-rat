@@ -1,7 +1,0 @@
-﻿  client.cpp
-c:\users\admin\source\repos\client\client\client.cpp(43): warning C4267: “参数”: 从“size_t”转换到“int”，可能丢失数据
-c:\users\admin\source\repos\client\client\client.cpp(32): warning C4996: 'inet_addr': Use inet_pton() or InetPton() instead or define _WINSOCK_DEPRECATED_NO_WARNINGS to disable deprecated API warnings
-  c:\program files (x86)\windows kits\10\include\10.0.16299.0\um\winsock2.h(1830): note: 参见“inet_addr”的声明
-c:\users\admin\source\repos\client\client\client.cpp(13): warning C4101: “addr”: 未引用的局部变量
-c:\users\admin\source\repos\client\client\client.cpp(12): warning C4101: “host”: 未引用的局部变量
-  client.vcxproj -> C:\Users\admin\source\repos\client\x64\Debug\client.exe
