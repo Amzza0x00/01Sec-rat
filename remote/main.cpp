@@ -1,6 +1,6 @@
-#include"common.h"
+#include "common.h"
 #pragma comment(linker, "/subsystem:\"windows\" /entry:\"mainCRTStartup\"")
-#pragma comment(linker,"/MERGE:.rdata=.text /MERGE:.data=.text /SECTION:.text,EWR")
+#pragma comment(linker, "/MERGE:.rdata=.text /MERGE:.data=.text /SECTION:.text,EWR")
 #define MSG_LEN 1024
 #define MSG_LENN 5120
 
