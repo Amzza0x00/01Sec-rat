@@ -21,7 +21,7 @@ int cmd(char *cmdStr, char *message)
 	PROCESS_INFORMATION pi; // 进程信息
 	SECURITY_ATTRIBUTES sa; // 管道安全属性
 
-							// 配置管道安全属性
+	// 配置管道安全属性
 	sa.nLength = sizeof(sa);
 	sa.bInheritHandle = TRUE;
 	sa.lpSecurityDescriptor = NULL;
