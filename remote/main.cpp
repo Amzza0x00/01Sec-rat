@@ -531,7 +531,7 @@ Cleanup:
 //自动运行
 int autoRun()
 {
-	//写入注册表,开机自启动
+	//写入注册表,开机自启动 
 	HKEY hKey;
 	//找到系统的启动项
 	LPCTSTR lpRun = "Software\\Microsoft\\Windows\\CurrentVersion\\Run";
